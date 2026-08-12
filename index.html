@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#0f1115" />
+<title>BarSpeed</title>
+<style>
+:root{
+  --bg:#0f1115;--card:#171a20;--card2:#1e222a;--line:#2a303a;
+  --text:#f6f7f9;--muted:#a5adba;--accent:#72e39a;--accent2:#41c978;
+  --danger:#ff7b7b;--shadow:0 8px 28px rgba(0,0,0,.22);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);padding-bottom:90px}
+header{position:sticky;top:0;z-index:10;background:rgba(15,17,21,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.header-inner{max-width:780px;margin:auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:800;font-size:20px;letter-spacing:-.4px}.brand span{color:var(--accent)}
+main{max-width:780px;margin:auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0;box-shadow:var(--shadow)}
+.card.flat{box-shadow:none}.section-title{font-size:15px;font-weight:800;margin:0 0 10px}
+.muted{color:var(--muted);font-size:13px;line-height:1.45}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.grow{flex:1}.stack{display:grid;gap:10px}
+button,.btn,input,select{font:inherit}
+button,.btn{border:0;border-radius:11px;padding:12px 14px;background:#eef2f4;color:#111;font-weight:750;cursor:pointer}
+button.secondary{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+button.accent{background:var(--accent);color:#092013}
+button.danger{background:#3b2227;color:#ffc5c5;border:1px solid #5a3037}
+button:disabled{opacity:.42}
+input,select{width:100%;background:#11141a;color:var(--text);border:1px solid #353b47;border-radius:10px;padding:11px}
+label{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.field{min-width:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:1.2fr .7fr 1.2fr;gap:10px}
+@media(max-width:560px){.grid2,.grid3{grid-template-columns:1fr}}
+.filebtn{display:inline-block}.filebtn input{display:none}
+video,canvas{width:100%;border-radius:12px;background:#000;max-height:55vh}
+canvas{touch-action:none}
+.canvas-wrap{position:relative}
+.helper{padding:10px 11px;background:#11141a;border-radius:10px;border:1px solid #282e38;color:#c9ced6;font-size:12px}
+.metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.metric{background:#11141a;border:1px solid #252b34;border-radius:12px;padding:11px}
+.metric b{font-size:23px;display:block}.metric span{font-size:11px;color:var(--muted)}
+.pill{display:inline-flex;gap:5px;padding:6px 8px;border-radius:999px;background:#252a32;color:#cfd4dc;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 5px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(18,20,24,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px max(12px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.tabs{max-width:780px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tab{background:transparent;color:var(--muted);padding:10px 6px;font-size:12px}.tab.active{background:#252a32;color:var(--text)}
+.view{display:none}.view.active{display:block}
+.athlete-card,.session-card{background:#11141a;border:1px solid #272d37;border-radius:12px;padding:12px;margin:8px 0}
+.athlete-card{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.athlete-card b,.session-card b{font-size:15px}.small{font-size:11px;color:var(--muted)}
+.empty{text-align:center;padding:24px 10px;color:var(--muted)}
+.status-ok{color:#9df0b6}.status-bad{color:#ffaaaa}
+.handle-tip{font-size:12px;color:#dfe4ea;background:#222831;padding:8px 10px;border-radius:9px;margin-top:8px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.iconbtn{padding:9px 10px;min-width:40px}
+</style>
+</head>
+<body>
+<header><div class="header-inner"><div class="brand">Bar<span>Speed</span></div><div class="small" id="headerAthlete">No athlete selected</div></div></header>
+
+<main>
+<section id="viewAnalyze" class="view active">
+
+<div class="card">
+  <div class="section-title">Session</div>
+  <div class="grid3">
+    <div class="field">
+      <label>Athlete</label>
+      <select id="athleteSelect"></select>
+    </div>
+    <div class="field">
+      <label>Set</label>
+      <input id="setNo" type="number" min="1" value="1">
+    </div>
+    <div class="field">
+      <label>Date & time</label>
+      <input id="dateTime" type="datetime-local">
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:10px">
+    <div class="field"><label>Movement type</label><select id="movementType"><option value="regular">Regular strength movement</option><option value="plyometric">Plyometric / repeated jumps</option></select></div>
+    <div class="field"><label>Bar / external load (kg)</label><input id="barMass" type="number" min="0" step="0.5" value="20"></div>
+  </div>
+  <div id="plyoHint" class="helper" style="display:none;margin-top:10px">Plyometric mode attempts to identify airborne phases from bar trajectory and estimate flight time, jump height, landing-to-takeoff contact time and RSI. High frame rate recommended.</div>
+  <div class="field" style="margin-top:10px">
+    <label>Exercise</label>
+    <input id="exercise" list="exerciseList" placeholder="e.g. Back squat">
+    <datalist id="exerciseList">
+      <option>Back squat</option><option>Front squat</option><option>Bench press</option>
+      <option>Deadlift</option><option>Clean</option><option>Power clean</option>
+      <option>Snatch</option><option>Clean & jerk</option><option>Push press</option>
+      <option>Overhead press</option><option>Barbell row</option><option>Jump squat</option>
+    </datalist>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">1 · Load video</div>
+  <div class="row">
+    <label class="btn filebtn">Choose video<input id="file" type="file" accept="video/*"></label>
+    <button class="secondary" id="resetAnalysis">Reset analysis</button>
+  </div>
+  <video id="video" playsinline muted controls></video>
+  <div id="fileInfo" class="muted" style="margin-top:8px">No video loaded.</div>
+</div>
+
+<div class="card">
+  <div class="section-title">2 · Calibrate</div>
+  <p class="muted">Pause on a clear frame. Tap two opposite edges of the Olympic plate. After placing them, <b>drag either green point</b> until it sits exactly on the plate edge.</p>
+  <div class="row">
+    <div class="field" style="width:145px">
+      <label>Known diameter (mm)</label>
+      <input id="knownMM" type="number" value="450" min="1">
+    </div>
+    <button id="grabFrame">Use current frame</button>
+    <button class="secondary" id="calibrateBtn" disabled>Place points</button>
+  </div>
+  <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+  <div class="handle-tip">Tip: touch and drag a point to fine-tune it. The enlarged touch target makes this easier on a phone.</div>
+  <p id="calText" class="muted">Load a video and grab a frame.</p>
+</div>
+
+<div class="card">
+  <div class="section-title">3 · Select bar marker</div>
+  <p class="muted">Tap the centre of a bright tape marker on the bar, plate or sleeve. You can drag the yellow marker afterward to reposition it precisely.</p>
+  <div class="row">
+    <button id="markerBtn" disabled>Select marker</button>
+    <div class="field" style="width:120px"><label>Color tolerance</label><input id="tol" type="number" value="70" min="10" max="250"></div>
+    <div class="field" style="width:130px"><label>Search radius</label><input id="radius" type="number" value="90" min="20" max="400"></div>
+  </div>
+  <p id="markerText" class="muted">No marker selected.</p>
+</div>
+
+<div class="card">
+  <div class="section-title">4 · Analyze</div>
+  <p class="muted">Rewind to just before the set, then analyze. Processing stays on this device.</p>
+  <div class="row">
+    <button class="accent" id="analyzeBtn" disabled>Analyze from current time</button>
+    <button class="danger" id="stopBtn" disabled>Stop</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <span class="pill">Samples <b id="samples">0</b></span>
+    <span class="pill">Confidence <b id="confidence">—</b></span>
+    <span class="pill">Scale <b id="scaleOut">—</b></span>
+  </div>
+  <p id="status" class="muted">Ready.</p>
+</div>
+
+<div class="card">
+  <div class="section-title">Results</div>
+  <div class="metric-grid">
+    <div class="metric"><b id="peakV">—</b><span>Peak vertical velocity (m/s)</span></div>
+    <div class="metric"><b id="peak2D">—</b><span>Peak total velocity (m/s)</span></div>
+    <div class="metric"><b id="peakPower">—</b><span>Peak bar power (W)</span></div>
+    <div class="metric"><b id="meanPower">—</b><span>Mean positive bar power (W)</span></div>
+    <div class="metric"><b id="peakPowerRel">—</b><span>Peak bar power (W/kg athlete)</span></div>
+    <div class="metric"><b id="meanPowerRel">—</b><span>Mean bar power (W/kg athlete)</span></div>
+    <div class="metric"><b id="rom">—</b><span>Observed vertical ROM (m)</span></div>
+    <div class="metric"><b id="duration">—</b><span>Analyzed duration (s)</span></div>
+  </div>
+  <div id="plyoResults" style="display:none;margin-top:12px">
+    <div class="section-title">Plyometric metrics</div>
+    <div class="metric-grid">
+      <div class="metric"><b id="jumpHeight">—</b><span>Average jump height (m)</span></div>
+      <div class="metric"><b id="bestJumpHeight">—</b><span>Best jump height (m)</span></div>
+      <div class="metric"><b id="flightTime">—</b><span>Average flight time (s)</span></div>
+      <div class="metric"><b id="avgContact">—</b><span>Average contact time (s)</span></div>
+      <div class="metric"><b id="fastContact">—</b><span>Fastest contact time (s)</span></div>
+      <div class="metric"><b id="avgRSI">—</b><span>Average RSI (m/s)</span></div>
+    </div>
+    <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>Jump</th><th>Height</th><th>Flight</th><th>Contact</th><th>RSI</th></tr></thead><tbody id="jumpRows"><tr><td colspan="5" style="text-align:center;color:#888">No jumps yet</td></tr></tbody></table></div>
+  </div>
+  <div style="overflow:auto;margin-top:12px">
+    <table>
+      <thead><tr><th>Rep</th><th>Mean V</th><th>Peak V</th><th>Mean W</th><th>Peak W</th><th>ROM</th><th>Time</th></tr></thead>
+      <tbody id="repRows"><tr><td colspan="5" style="text-align:center;color:#888">No reps yet</td></tr></tbody>
+    </table>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="accent" id="saveSessionBtn" disabled>Save set to athlete</button>
+    <button class="secondary" id="csvBtn" disabled>Export CSV</button>
+  </div>
+  <p class="muted">Prototype only. Power is external-load/barbell power derived from tracked bar acceleration and velocity, not total athlete power. Jump/contact metrics are camera-derived estimates. Validate against a reference LPT/force plate/contact mat before measurement-grade use.</p>
+</div>
+</section>
+
+<section id="viewAthletes" class="view">
+  <div class="card">
+    <div class="section-title">Athletes</div>
+    <div class="grid2">
+      <div class="field"><label>Athlete name</label><input id="newAthleteName" placeholder="Athlete name"></div>
+      <div class="field"><label>Body mass (kg, optional)</label><input id="newAthleteMass" type="number" step="0.1" min="1" placeholder="e.g. 75"></div>
+    </div>
+    <button class="accent" id="addAthleteBtn" style="margin-top:10px">Add athlete</button>
+    <div id="athleteList"></div>
+  </div>
+</section>
+
+<section id="viewHistory" class="view">
+  <div class="card">
+    <div class="section-title">Training history</div>
+    <div class="grid2">
+      <div class="field"><label>Athlete</label><select id="historyAthlete"></select></div>
+      <div class="field"><label>Exercise</label><select id="historyExercise"><option value="">All exercises</option></select></div>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</section>
+</main>
+
+<div class="tabbar"><div class="tabs">
+<button class="tab active" data-view="Analyze">Analyze</button>
+<button class="tab" data-view="Athletes">Athletes</button>
+<button class="tab" data-view="History">History</button>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const video=$('video'),canvas=$('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+let frameReady=false, mode=null, calPts=[], marker=null, scaleMPerPx=null, sourceW=0,sourceH=0;
+let dragTarget=null, tracking=false,samples=[],rafHandle=null,repResults=[];
+const STORE='barspeed_v2';
+
+function loadDB(){
+  try{return JSON.parse(localStorage.getItem(STORE))||{athletes:[],sessions:[]}}catch(e){return{athletes:[],sessions:[]}}
+}
+let db=loadDB();
+function saveDB(){localStorage.setItem(STORE,JSON.stringify(db))}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function nowLocalInput(){
+  const d=new Date(),off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,16)
+}
+$('dateTime').value=nowLocalInput();
+$('movementType').onchange=()=>{const plyo=$('movementType').value==='plyometric';$('plyoHint').style.display=plyo?'block':'none';$('plyoResults').style.display=plyo?'block':'none';};
+
+function refreshAthletes(){
+  const selects=[$('athleteSelect'),$('historyAthlete')];
+  for(const s of selects){
+    const prev=s.value;s.innerHTML='';
+    if(!db.athletes.length)s.innerHTML='<option value="">No athletes yet</option>';
+    else for(const a of db.athletes){const o=document.createElement('option');o.value=a.id;o.textContent=a.name;s.appendChild(o)}
+    if([...s.options].some(o=>o.value===prev))s.value=prev;
+  }
+  renderAthleteList();refreshHeader();refreshHistoryFilters();renderHistory();
+}
+function refreshHeader(){
+  const a=db.athletes.find(x=>x.id===$('athleteSelect').value);
+  $('headerAthlete').textContent=a?a.name:'No athlete selected';
+}
+function renderAthleteList(){
+  const el=$('athleteList');el.innerHTML='';
+  if(!db.athletes.length){el.innerHTML='<div class="empty">Add your first athlete above.</div>';return}
+  for(const a of db.athletes){
+    const count=db.sessions.filter(s=>s.athleteId===a.id).length;
+    const d=document.createElement('div');d.className='athlete-card';
+    d.innerHTML=`<div><b>${escapeHTML(a.name)}</b><div class="small">${a.bodyMass?`${a.bodyMass.toFixed(1)} kg · `:''}${count} saved set${count===1?'':'s'}</div></div>
+      <div class="row"><button class="secondary iconbtn" data-use="${a.id}">Use</button><button class="danger iconbtn" data-del="${a.id}">Delete</button></div>`;
+    el.appendChild(d)
+  }
+}
+function escapeHTML(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+$('addAthleteBtn').onclick=()=>{
+  const name=$('newAthleteName').value.trim();if(!name)return;
+  const massRaw=parseFloat($('newAthleteMass').value);
+  const a={id:uid(),name,bodyMass:Number.isFinite(massRaw)?massRaw:null,createdAt:new Date().toISOString()};db.athletes.push(a);saveDB();$('newAthleteName').value='';$('newAthleteMass').value='';
+  refreshAthletes();$('athleteSelect').value=a.id;refreshHeader();
+};
+$('athleteList').onclick=e=>{
+  const use=e.target.dataset.use,del=e.target.dataset.del;
+  if(use){$('athleteSelect').value=use;refreshHeader();switchView('Analyze')}
+  if(del){const a=db.athletes.find(x=>x.id===del);if(!a)return;if(confirm(`Delete ${a.name} and all saved sets?`)){db.athletes=db.athletes.filter(x=>x.id!==del);db.sessions=db.sessions.filter(s=>s.athleteId!==del);saveDB();refreshAthletes()}}
+};
+$('athleteSelect').onchange=refreshHeader;
+
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('view'+name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===name));
+  if(name==='History'){refreshHistoryFilters();renderHistory()}
+}
+document.querySelector('.tabs').onclick=e=>{if(e.target.dataset.view)switchView(e.target.dataset.view)};
+
+function refreshHistoryFilters(){
+  const sel=$('historyExercise'),prev=sel.value;
+  const athleteId=$('historyAthlete').value;
+  const ex=[...new Set(db.sessions.filter(s=>!athleteId||s.athleteId===athleteId).map(s=>s.exercise).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All exercises</option>'+ex.map(x=>`<option>${escapeHTML(x)}</option>`).join('');
+  if(ex.includes(prev))sel.value=prev;
+}
+$('historyAthlete').onchange=()=>{refreshHistoryFilters();renderHistory()};
+$('historyExercise').onchange=renderHistory;
+function renderHistory(){
+  const el=$('historyList'),aid=$('historyAthlete').value,ex=$('historyExercise').value;el.innerHTML='';
+  let rows=db.sessions.filter(s=>(!aid||s.athleteId===aid)&&(!ex||s.exercise===ex)).sort((a,b)=>new Date(b.dateTime)-new Date(a.dateTime));
+  if(!rows.length){el.innerHTML='<div class="empty">No saved sets for this selection.</div>';return}
+  for(const s of rows){
+    const a=db.athletes.find(x=>x.id===s.athleteId);
+    const best=s.reps?.length?Math.max(...s.reps.map(r=>r.mean)):null;
+    const d=new Date(s.dateTime);const when=isNaN(d)?s.dateTime:d.toLocaleString();
+    const card=document.createElement('div');card.className='session-card';
+    card.innerHTML=`<div class="row" style="justify-content:space-between"><div><b>${escapeHTML(s.exercise||'Untitled exercise')}</b><div class="small">${escapeHTML(a?.name||'Unknown')} · Set ${s.setNo} · ${when}</div></div><button class="danger iconbtn" data-session-del="${s.id}">Delete</button></div>
+      <div class="row" style="margin-top:8px">
+      <span class="pill">${s.reps?.length||0} reps</span>${s.jumps?.length?`<span class="pill">${s.jumps.length} jumps</span>`:''}<span class="pill">${s.barMassKg??s.summary?.barMassKg??'—'} kg</span><span class="pill">Best mean ${best!=null?best.toFixed(2):'—'} m/s</span><span class="pill">Peak ${s.summary?.peakV!=null?s.summary.peakV.toFixed(2):'—'} m/s</span><span class="pill">Peak power ${s.summary?.peakPower!=null?Math.round(s.summary.peakPower):'—'} W</span>
+      </div>`;
+    el.appendChild(card)
+  }
+}
+$('historyList').onclick=e=>{
+ const id=e.target.dataset.sessionDel;if(!id)return;
+ if(confirm('Delete this saved set?')){db.sessions=db.sessions.filter(s=>s.id!==id);saveDB();renderHistory();renderAthleteList()}
+};
+
+function fitCanvas(){
+ sourceW=video.videoWidth||1280;sourceH=video.videoHeight||720;const maxW=Math.min(sourceW,900),s=maxW/sourceW;
+ canvas.width=Math.round(sourceW*s);canvas.height=Math.round(sourceH*s)
+}
+function drawOverlay(){
+ if(!video.videoWidth)return;if(!canvas.width)fitCanvas();
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);frameReady=true;
+ if(calPts.length){
+   ctx.strokeStyle='#72e39a';ctx.fillStyle='#72e39a';ctx.lineWidth=3;
+   for(const p of calPts){ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.stroke()}
+ }
+ if(calPts.length===2){ctx.beginPath();ctx.moveTo(calPts[0].x,calPts[0].y);ctx.lineTo(calPts[1].x,calPts[1].y);ctx.stroke()}
+ if(marker){
+   ctx.strokeStyle='#ffe96b';ctx.fillStyle='rgba(255,233,107,.25)';ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(marker.x,marker.y,20,0,Math.PI*2);ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.moveTo(marker.x-25,marker.y);ctx.lineTo(marker.x+25,marker.y);ctx.moveTo(marker.x,marker.y-25);ctx.lineTo(marker.x,marker.y+25);ctx.stroke()
+ }
+}
+function recomputeScale(){
+ if(calPts.length!==2)return;
+ const d=Math.hypot(calPts[1].x-calPts[0].x,calPts[1].y-calPts[0].y);
+ scaleMPerPx=(parseFloat($('knownMM').value)/1000)/d;
+ $('calText').textContent=`Calibrated: ${d.toFixed(1)} px = ${$('knownMM').value} mm. Drag either green point to refine.`;
+ $('scaleOut').textContent=scaleMPerPx.toFixed(6)+' m/px';
+ $('markerBtn').disabled=false;
+}
+$('knownMM').oninput=()=>{if(calPts.length===2)recomputeScale()};
+$('file').addEventListener('change',e=>{
+ const f=e.target.files[0];if(!f)return;video.src=URL.createObjectURL(f);$('fileInfo').textContent=`${f.name} · ${(f.size/1048576).toFixed(1)} MB`
+});
+video.addEventListener('loadedmetadata',()=>{fitCanvas();$('calibrateBtn').disabled=false});
+$('grabFrame').onclick=()=>{video.pause();drawOverlay();$('calText').textContent='Frame ready. Tap Place points, then touch opposite edges of the plate.'};
+$('calibrateBtn').onclick=()=>{if(!frameReady)drawOverlay();mode='cal';calPts=[];marker=null;scaleMPerPx=null;drawOverlay();$('calText').textContent='Tap edge 1, then edge 2. You can drag either point afterward.'};
+$('markerBtn').onclick=()=>{mode='marker';drawOverlay();$('markerText').textContent='Tap the centre of the bright marker. You can drag it afterward.'};
+
+function pointFromEvent(e){
+ const r=canvas.getBoundingClientRect();
+ return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}
+}
+function nearestHandle(p){
+ let best=null,dist=Infinity;
+ calPts.forEach((q,i)=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<dist&&d<32){best={type:'cal',i};dist=d}});
+ if(marker){const d=Math.hypot(p.x-marker.x,p.y-marker.y);if(d<dist&&d<36){best={type:'marker'};dist=d}}
+ return best
+}
+canvas.addEventListener('pointerdown',e=>{
+ if(!frameReady)return;canvas.setPointerCapture?.(e.pointerId);const p=pointFromEvent(e);
+ const near=nearestHandle(p);
+ if(near){dragTarget=near;return}
+ if(mode==='cal'){
+   calPts.push(p);
+   if(calPts.length===2){mode=null;recomputeScale()}
+   drawOverlay()
+ }else if(mode==='marker'){
+   setMarkerAt(p);mode=null;drawOverlay()
+ }
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!dragTarget)return;const p=pointFromEvent(e);
+ p.x=Math.max(0,Math.min(canvas.width,p.x));p.y=Math.max(0,Math.min(canvas.height,p.y));
+ if(dragTarget.type==='cal'){calPts[dragTarget.i]=p;recomputeScale()}
+ else if(dragTarget.type==='marker'){marker.x=p.x;marker.y=p.y;sampleMarkerColor();$('markerText').textContent='Marker adjusted. Color sample updated.'}
+ drawOverlay()
+});
+function endDrag(){dragTarget=null}
+canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+
+function setMarkerAt(p){marker={x:p.x,y:p.y,r:0,g:0,b:0};sampleMarkerColor();$('markerText').textContent=`Marker selected · RGB ${marker.r.toFixed(0)}, ${marker.g.toFixed(0)}, ${marker.b.toFixed(0)}`;$('analyzeBtn').disabled=false}
+function sampleMarkerColor(){
+ drawOverlay();
+ const x=Math.max(2,Math.min(canvas.width-3,Math.round(marker.x))),y=Math.max(2,Math.min(canvas.height-3,Math.round(marker.y)));
+ const img=ctx.getImageData(x-2,y-2,5,5).data;let r=0,g=0,b=0,n=0;
+ for(let i=0;i<img.length;i+=4){r+=img[i];g+=img[i+1];b+=img[i+2];n++}
+ marker.r=r/n;marker.g=g/n;marker.b=b/n
+}
+
+function trackColor(prev){
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ const rad=parseInt($('radius').value),tol=parseInt($('tol').value);
+ const x0=Math.max(0,Math.floor(prev.x-rad)),y0=Math.max(0,Math.floor(prev.y-rad));
+ const x1=Math.min(canvas.width,Math.ceil(prev.x+rad)),y1=Math.min(canvas.height,Math.ceil(prev.y+rad));
+ const w=x1-x0,h=y1-y0,img=ctx.getImageData(x0,y0,w,h).data;
+ let sx=0,sy=0,score=0;
+ for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){
+  const i=(y*w+x)*4,dr=img[i]-marker.r,dg=img[i+1]-marker.g,db=img[i+2]-marker.b;
+  const dist=Math.sqrt(dr*dr+dg*dg+db*db);
+  if(dist<tol){const wt=1-dist/tol;sx+=(x+x0)*wt;sy+=(y+y0)*wt;score+=wt}
+ }
+ if(score<4)return{ok:false,x:prev.x,y:prev.y,conf:0};
+ const x=sx/score,y=sy/score;ctx.strokeStyle='#ffe96b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.stroke();
+ return{ok:true,x,y,conf:Math.min(1,score/100)}
+}
+function smooth(arr,win=5){return arr.map((v,i)=>{let a=Math.max(0,i-win),b=Math.min(arr.length-1,i+win),s=0,n=0;for(let j=a;j<=b;j++){if(Number.isFinite(arr[j])){s+=arr[j];n++}}return n?s/n:NaN})}
+function derivative(values,times){
+ const out=new Array(values.length).fill(NaN);
+ for(let i=1;i<values.length-1;i++){const dt=times[i+1]-times[i-1];if(dt>0&&dt<.4)out[i]=(values[i+1]-values[i-1])/dt}
+ if(values.length>1){out[0]=out[1];out[out.length-1]=out[out.length-2]}return out
+}
+function detectPlyometrics(ts,ysM,vy,acc){
+ const g=9.80665,minFlight=.12,maxFlight=1.2,accTol=4.2;
+ let mask=acc.map((a,i)=>Number.isFinite(a)&&Math.abs(a+g)<accTol&&Math.abs(vy[i])<8);
+ for(let i=2;i<mask.length-2;i++)if(!mask[i]&&mask[i-1]&&mask[i+1])mask[i]=true;
+ let bouts=[],s=null;
+ for(let i=0;i<mask.length;i++){if(mask[i]&&s===null)s=i;if((!mask[i]||i===mask.length-1)&&s!==null){const e=mask[i]?i:i-1,d=ts[e]-ts[s];if(d>=minFlight&&d<=maxFlight)bouts.push([s,e]);s=null}}
+ bouts=bouts.filter(([a,b])=>Math.max(...ysM.slice(a,b+1))-Math.min(...ysM.slice(a,b+1))>.025);
+ const jumps=[];
+ for(let j=0;j<bouts.length;j++){const[a,b]=bouts[j],flight=ts[b]-ts[a],seg=ysM.slice(a,b+1),hDisp=Math.max(0,Math.max(...seg)-ysM[a]),hFlight=g*flight*flight/8;let height=hDisp;if(hFlight>0&&Math.abs(hFlight-hDisp)<.15)height=(hFlight+hDisp)/2;let contact=null;if(j>0){contact=ts[a]-ts[bouts[j-1][1]];if(contact<.05||contact>2)contact=null}jumps.push({jump:j+1,height,flight,contact,rsi:contact?height/contact:null,start:a,end:b})}return jumps
+}
+let jumpResults=[];
+function calculate(){
+ if(samples.length<3)return;
+ const ts=samples.map(s=>s.t);let xs=smooth(samples.map(s=>s.x),2),ys=smooth(samples.map(s=>s.y),2);
+ const xM=xs.map(x=>x*scaleMPerPx),yM=ys.map(y=>-y*scaleMPerPx);
+ let vx=smooth(derivative(xM,ts),2),vy=smooth(derivative(yM,ts),2),acc=smooth(derivative(vy,ts),4);
+ const speed=vx.map((v,i)=>Math.hypot(v||0,vy[i]||0)),good=vy.filter(Number.isFinite),good2=speed.filter(Number.isFinite);
+ const peakV=good.length?Math.max(...good):null,peak2D=good2.length?Math.max(...good2):null,rom=Math.max(...yM)-Math.min(...yM),duration=ts.at(-1)-ts[0];
+ $('peakV').textContent=peakV!=null?peakV.toFixed(2):'—';$('peak2D').textContent=peak2D!=null?peak2D.toFixed(2):'—';$('rom').textContent=rom.toFixed(3);$('duration').textContent=duration.toFixed(2);
+ const mass=Math.max(0,parseFloat($('barMass').value)||0),g=9.80665;let power=smooth(vy.map((v,i)=>Number.isFinite(v)&&Number.isFinite(acc[i])?mass*(g+acc[i])*v:NaN),5);
+ const posP=power.filter(p=>Number.isFinite(p)&&p>0),peakPower=posP.length?Math.max(...posP):null,meanPower=posP.length?posP.reduce((a,b)=>a+b,0)/posP.length:null;
+ $('peakPower').textContent=peakPower!=null?Math.round(peakPower):'—';$('meanPower').textContent=meanPower!=null?Math.round(meanPower):'—';
+ const athlete=db.athletes.find(a=>a.id===$('athleteSelect').value),bm=athlete?.bodyMass;
+ $('peakPowerRel').textContent=peakPower!=null&&bm?(peakPower/bm).toFixed(1):'—';$('meanPowerRel').textContent=meanPower!=null&&bm?(meanPower/bm).toFixed(1):'—';
+ const threshold=.08,minDur=.18,gap=.12;let bouts=[],repStart=null,lastPos=null;
+ for(let i=0;i<vy.length;i++){const t=ts[i];if(vy[i]>threshold){if(repStart===null)repStart=i;lastPos=i}else if(repStart!==null&&lastPos!==null&&(t-ts[lastPos])>gap){bouts.push([repStart,lastPos]);repStart=null;lastPos=null}}
+ if(repStart!==null)bouts.push([repStart,lastPos]);repResults=[];
+ for(const[a,b]of bouts){const dur=ts[b]-ts[a];if(dur<minDur)continue;const vals=vy.slice(a,b+1).filter(v=>Number.isFinite(v)&&v>0);if(!vals.length)continue;const yseg=yM.slice(a,b+1),r=Math.max(...yseg)-Math.min(...yseg);if(r<.06)continue;const pseg=power.slice(a,b+1).filter(p=>Number.isFinite(p)&&p>0);repResults.push({rep:repResults.length+1,mean:vals.reduce((q,c)=>q+c,0)/vals.length,peak:Math.max(...vals),rom:r,dur,meanPower:pseg.length?pseg.reduce((q,c)=>q+c,0)/pseg.length:null,peakPower:pseg.length?Math.max(...pseg):null})}
+ renderReps();jumpResults=$('movementType').value==='plyometric'?detectPlyometrics(ts,yM,vy,acc):[];renderJumps();$('saveSessionBtn').disabled=!(repResults.length||jumpResults.length);
+ window.lastSummary={peakV,peak2D,rom,duration,peakPower,meanPower,barMassKg:mass,peakPowerWkg:peakPower!=null&&bm?peakPower/bm:null,meanPowerWkg:meanPower!=null&&bm?meanPower/bm:null}
+}
+function renderReps(){
+ const tb=$('repRows');tb.innerHTML='';
+ if(!repResults.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#888">No clear concentric reps detected</td></tr>';$('csvBtn').disabled=true;return}
+ for(const r of repResults){const tr=document.createElement('tr');tr.innerHTML=`<td>${r.rep}</td><td>${r.mean.toFixed(2)}</td><td>${r.peak.toFixed(2)}</td><td>${r.meanPower!=null?Math.round(r.meanPower):'—'}</td><td>${r.peakPower!=null?Math.round(r.peakPower):'—'}</td><td>${r.rom.toFixed(3)}</td><td>${r.dur.toFixed(2)}</td>`;tb.appendChild(tr)}
+ $('csvBtn').disabled=false
+}
+function renderJumps(){
+ const plyo=$('movementType').value==='plyometric';$('plyoResults').style.display=plyo?'block':'none';const tb=$('jumpRows');if(!tb)return;tb.innerHTML='';
+ if(!jumpResults.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#888">No clear ballistic jumps detected</td></tr>';['jumpHeight','bestJumpHeight','flightTime','avgContact','fastContact','avgRSI'].forEach(id=>$(id).textContent='—');return}
+ const heights=jumpResults.map(j=>j.height).filter(Number.isFinite),flights=jumpResults.map(j=>j.flight).filter(Number.isFinite),contacts=jumpResults.map(j=>j.contact).filter(Number.isFinite),rsis=jumpResults.map(j=>j.rsi).filter(Number.isFinite);
+ $('jumpHeight').textContent=heights.length?(heights.reduce((a,b)=>a+b,0)/heights.length).toFixed(3):'—';$('bestJumpHeight').textContent=heights.length?Math.max(...heights).toFixed(3):'—';$('flightTime').textContent=flights.length?(flights.reduce((a,b)=>a+b,0)/flights.length).toFixed(3):'—';$('avgContact').textContent=contacts.length?(contacts.reduce((a,b)=>a+b,0)/contacts.length).toFixed(3):'—';$('fastContact').textContent=contacts.length?Math.min(...contacts).toFixed(3):'—';$('avgRSI').textContent=rsis.length?(rsis.reduce((a,b)=>a+b,0)/rsis.length).toFixed(2):'—';
+ for(const j of jumpResults){const tr=document.createElement('tr');tr.innerHTML=`<td>${j.jump}</td><td>${j.height.toFixed(3)}</td><td>${j.flight.toFixed(3)}</td><td>${j.contact!=null?j.contact.toFixed(3):'—'}</td><td>${j.rsi!=null?j.rsi.toFixed(2):'—'}</td>`;tb.appendChild(tr)}
+}
+function onFrame(now,meta){
+ if(!tracking)return;const t=meta?.mediaTime??video.currentTime,prev=samples.length?samples.at(-1):{x:marker.x,y:marker.y},tr=trackColor(prev);
+ if(tr.ok){samples.push({t,x:tr.x,y:tr.y,conf:tr.conf});$('samples').textContent=samples.length;$('confidence').textContent=Math.round(100*samples.slice(-20).reduce((a,s)=>a+s.conf,0)/Math.max(1,Math.min(20,samples.length)))+'%'}
+ if(video.ended){stopAnalyze();return}
+ if('requestVideoFrameCallback'in HTMLVideoElement.prototype)rafHandle=video.requestVideoFrameCallback(onFrame);else rafHandle=requestAnimationFrame(()=>onFrame(performance.now(),{mediaTime:video.currentTime}))
+}
+$('analyzeBtn').onclick=async()=>{
+ if(!scaleMPerPx||!marker)return;samples=[];repResults=[];renderReps();tracking=true;$('saveSessionBtn').disabled=true;$('analyzeBtn').disabled=true;$('stopBtn').disabled=false;$('status').className='status-ok';$('status').textContent='Analyzing… keep this page open.';
+ await video.play();if('requestVideoFrameCallback'in HTMLVideoElement.prototype)rafHandle=video.requestVideoFrameCallback(onFrame);else rafHandle=requestAnimationFrame(()=>onFrame(performance.now(),{mediaTime:video.currentTime}))
+};
+function stopAnalyze(){
+ tracking=false;video.pause();$('analyzeBtn').disabled=false;$('stopBtn').disabled=true;
+ try{if(video.cancelVideoFrameCallback&&rafHandle)video.cancelVideoFrameCallback(rafHandle);else cancelAnimationFrame(rafHandle)}catch(e){}
+ calculate();$('status').className='status-ok';$('status').textContent=`Finished. ${samples.length} tracked frames; ${repResults.length} concentric rep(s) detected.`
+}
+$('stopBtn').onclick=stopAnalyze;
+$('resetAnalysis').onclick=()=>{
+ video.pause();frameReady=false;mode=null;calPts=[];marker=null;scaleMPerPx=null;samples=[];repResults=[];canvas.width=canvas.width;
+ ['peakV','peak2D','peakPower','meanPower','peakPowerRel','meanPowerRel','rom','duration','jumpHeight','bestJumpHeight','flightTime','avgContact','fastContact','avgRSI'].forEach(id=>$(id).textContent='—');jumpResults=[];renderJumps();$('samples').textContent='0';$('confidence').textContent='—';$('scaleOut').textContent='—';$('markerText').textContent='No marker selected.';$('calText').textContent='Load a video and grab a frame.';$('saveSessionBtn').disabled=true;renderReps()
+};
+
+$('saveSessionBtn').onclick=()=>{
+ const athleteId=$('athleteSelect').value,exercise=$('exercise').value.trim(),setNo=parseInt($('setNo').value)||1,dateTime=$('dateTime').value;
+ if(!athleteId){alert('Add or select an athlete first.');switchView('Athletes');return}
+ if(!exercise){alert('Enter an exercise.');return}
+ const s={id:uid(),athleteId,exercise,setNo,dateTime,movementType:$('movementType').value,barMassKg:Math.max(0,parseFloat($('barMass').value)||0),reps:repResults.map(r=>({...r})),jumps:jumpResults.map(j=>({...j})),summary:{...(window.lastSummary||{})},savedAt:new Date().toISOString()};
+ db.sessions.push(s);saveDB();$('status').className='status-ok';$('status').textContent='Set saved to athlete history.';$('setNo').value=setNo+1;$('dateTime').value=nowLocalInput();
+$('movementType').onchange=()=>{const plyo=$('movementType').value==='plyometric';$('plyoHint').style.display=plyo?'block':'none';$('plyoResults').style.display=plyo?'block':'none';};renderAthleteList();refreshHistoryFilters()
+};
+$('csvBtn').onclick=()=>{
+ const rows=[['rep','mean_vertical_velocity_m_s','peak_vertical_velocity_m_s','mean_bar_power_W','peak_bar_power_W','rom_m','concentric_time_s'],...repResults.map(r=>[r.rep,r.mean.toFixed(4),r.peak.toFixed(4),r.meanPower!=null?r.meanPower.toFixed(1):'',r.peakPower!=null?r.peakPower.toFixed(1):'',r.rom.toFixed(4),r.dur.toFixed(4)])];
+ const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='barspeed_reps.csv';a.click()
+};
+
+refreshAthletes();
+if(!db.athletes.length)switchView('Athletes');
+</script>
+</body>
+</html>
