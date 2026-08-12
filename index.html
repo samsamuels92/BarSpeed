@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#111111" />
+<title>BarSpeed MVP</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f5f5f5;background:#111}
+*{box-sizing:border-box} body{margin:0;background:#111}
+header{position:sticky;top:0;z-index:5;padding:14px 16px;background:rgba(17,17,17,.94);backdrop-filter:blur(8px);border-bottom:1px solid #2b2b2b}
+h1{font-size:20px;margin:0} header p{margin:4px 0 0;color:#aaa;font-size:12px}
+main{max-width:760px;margin:auto;padding:14px 14px 60px}
+.card{background:#1b1b1b;border:1px solid #2c2c2c;border-radius:14px;padding:14px;margin:12px 0}
+h2{font-size:16px;margin:0 0 10px}.muted{color:#aaa;font-size:13px;line-height:1.4}
+button,.filebtn,select,input{font:inherit}
+button,.filebtn{border:0;border-radius:10px;padding:12px 14px;background:#f0f0f0;color:#111;font-weight:700;display:inline-block;margin:4px 4px 4px 0}
+button.secondary{background:#333;color:#fff} button.warn{background:#5b2424;color:#fff}
+button:disabled{opacity:.45}
+input[type=file]{display:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+label.small{display:block;color:#bbb;font-size:12px;margin-bottom:4px}
+input[type=number]{width:110px;background:#111;color:#fff;border:1px solid #444;padding:9px;border-radius:8px}
+video{width:100%;border-radius:10px;background:#000;max-height:56vh}
+canvas{width:100%;border-radius:10px;background:#000;touch-action:none}
+#stageWrap{position:relative}.pill{display:inline-block;padding:5px 8px;border-radius:999px;background:#292929;color:#ccc;font-size:12px;margin:3px}
+.metricGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.metric{background:#111;border-radius:10px;padding:10px}
+.metric b{display:block;font-size:22px}.metric span{font-size:11px;color:#aaa}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 5px;border-bottom:1px solid #333;text-align:right}th:first-child,td:first-child{text-align:left}
+#status{font-weight:600}.ok{color:#9fe3a8}.bad{color:#ff9b9b}
+.step{font-size:13px;line-height:1.45;padding-left:18px}.step li{margin:6px 0}
+footer{color:#777;font-size:11px;text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>BarSpeed MVP</h1>
+  <p>Video-based barbell velocity estimator — prototype</p>
+</header>
+<main>
+<section class="card">
+<h2>1. Film correctly</h2>
+<ol class="step">
+<li>Phone stationary, side-on to the bar path.</li>
+<li>Use a standard 450 mm Olympic plate if possible.</li>
+<li>Put a bright, unique marker/tape patch on the visible plate or sleeve.</li>
+<li>60 fps works; 120/240 fps is preferable for fast lifts.</li>
+</ol>
+</section>
+
+<section class="card">
+<h2>2. Load video</h2>
+<div class="row">
+<label class="filebtn">Choose video<input id="file" type="file" accept="video/*"></label>
+<button class="secondary" id="resetBtn">Reset</button>
+</div>
+<video id="video" playsinline muted controls></video>
+<p id="fileInfo" class="muted">No video loaded.</p>
+</section>
+
+<section class="card">
+<h2>3. Calibrate distance</h2>
+<p class="muted">Pause on a frame where the plate is clearly visible. Tap opposite edges of the 450 mm plate. The app converts pixels to metres.</p>
+<div class="row">
+<div><label class="small">Known diameter (mm)</label><input id="knownMM" type="number" value="450" min="1"></div>
+<button id="grabFrame">Use current frame</button>
+<button class="secondary" id="calibrateBtn" disabled>Start calibration</button>
+</div>
+<div id="stageWrap"><canvas id="canvas"></canvas></div>
+<p id="calText" class="muted">Load a video and grab a frame.</p>
+</section>
+
+<section class="card">
+<h2>4. Select marker</h2>
+<p class="muted">After calibration, tap the center of your bright marker. Tracking works best when its color is unlike skin, plates, clothing and the background.</p>
+<div class="row">
+<button id="markerBtn" disabled>Select marker</button>
+<div><label class="small">Color tolerance</label><input id="tol" type="number" value="70" min="10" max="250"></div>
+<div><label class="small">Search radius (px)</label><input id="radius" type="number" value="90" min="20" max="400"></div>
+</div>
+<p id="markerText" class="muted">No marker selected.</p>
+</section>
+
+<section class="card">
+<h2>5. Analyze</h2>
+<p class="muted">Rewind to just before the set, then analyze. Keep the entire marker visible. Processing occurs on your device.</p>
+<div class="row">
+<button id="analyzeBtn" disabled>Analyze from current time</button>
+<button class="warn" id="stopBtn" disabled>Stop</button>
+</div>
+<div class="row">
+<span class="pill">Samples: <b id="samples">0</b></span>
+<span class="pill">Tracking confidence: <b id="confidence">—</b></span>
+<span class="pill">Scale: <b id="scaleOut">—</b></span>
+</div>
+<p id="status" class="muted">Ready.</p>
+</section>
+
+<section class="card">
+<h2>Results</h2>
+<div class="metricGrid">
+<div class="metric"><b id="peakV">—</b><span>Peak vertical velocity (m/s)</span></div>
+<div class="metric"><b id="peak2D">—</b><span>Peak total velocity (m/s)</span></div>
+<div class="metric"><b id="rom">—</b><span>Observed vertical ROM (m)</span></div>
+<div class="metric"><b id="duration">—</b><span>Analyzed duration (s)</span></div>
+</div>
+<h2 style="margin-top:16px">Detected concentric reps</h2>
+<div style="overflow:auto">
+<table>
+<thead><tr><th>Rep</th><th>Mean V</th><th>Peak V</th><th>ROM</th><th>Time</th></tr></thead>
+<tbody id="repRows"><tr><td colspan="5" style="text-align:center;color:#888">No reps yet</td></tr></tbody>
+</table>
+</div>
+<div class="row" style="margin-top:10px">
+<button class="secondary" id="csvBtn" disabled>Export CSV</button>
+</div>
+<p class="muted">Mean V = mean positive vertical velocity during the detected concentric phase. This prototype is not yet validated against a GymAware/Vitruve/LPT, so treat values as experimental.</p>
+</section>
+
+<footer>BarSpeed MVP · client-side prototype · no video is uploaded anywhere</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const video=$('video'), canvas=$('canvas'), ctx=canvas.getContext('2d',{willReadFrequently:true});
+let sourceW=0, sourceH=0, frameReady=false, mode=null, calPts=[], marker=null, scaleMPerPx=null;
+let tracking=false, samples=[], rafHandle=null, repResults=[];
+
+function fitCanvas(){
+  sourceW=video.videoWidth||1280; sourceH=video.videoHeight||720;
+  const maxW=Math.min(sourceW,900);
+  const s=maxW/sourceW;
+  canvas.width=Math.round(sourceW*s); canvas.height=Math.round(sourceH*s);
+}
+function drawCurrent(){
+  if(!video.videoWidth)return;
+  if(!canvas.width)fitCanvas();
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  frameReady=true;
+  if(calPts.length){ctx.fillStyle='lime';for(const p of calPts){ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.fill()}}
+  if(calPts.length===2){ctx.strokeStyle='lime';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(calPts[0].x,calPts[0].y);ctx.lineTo(calPts[1].x,calPts[1].y);ctx.stroke()}
+  if(marker){ctx.strokeStyle='yellow';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,12,0,Math.PI*2);ctx.stroke()}
+}
+$('file').addEventListener('change',e=>{
+ const f=e.target.files[0]; if(!f)return;
+ video.src=URL.createObjectURL(f);
+ $('fileInfo').textContent=`${f.name} · ${(f.size/1048576).toFixed(1)} MB`;
+});
+video.addEventListener('loadedmetadata',()=>{fitCanvas(); $('calibrateBtn').disabled=false;});
+$('grabFrame').onclick=()=>{video.pause();drawCurrent();$('calText').textContent='Frame ready. Tap Start calibration, then tap two opposite plate edges.'};
+$('calibrateBtn').onclick=()=>{if(!frameReady)drawCurrent();mode='cal';calPts=[];marker=null;scaleMPerPx=null;drawCurrent();$('calText').textContent='Tap edge 1, then opposite edge 2 of the known plate diameter.'};
+$('markerBtn').onclick=()=>{mode='marker';drawCurrent();$('markerText').textContent='Tap the center of the bright marker.'};
+
+function canvasPoint(ev){
+ const r=canvas.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev;
+ return {x:(t.clientX-r.left)*canvas.width/r.width,y:(t.clientY-r.top)*canvas.height/r.height};
+}
+canvas.addEventListener('pointerdown',e=>{
+ if(!frameReady)return; const p=canvasPoint(e);
+ if(mode==='cal'){
+   calPts.push(p);
+   if(calPts.length===2){
+     const d=Math.hypot(calPts[1].x-calPts[0].x,calPts[1].y-calPts[0].y);
+     scaleMPerPx=(parseFloat($('knownMM').value)/1000)/d;
+     mode=null;$('markerBtn').disabled=false;
+     $('calText').textContent=`Calibrated: ${d.toFixed(1)} px = ${$('knownMM').value} mm.`;
+     $('scaleOut').textContent=scaleMPerPx.toFixed(6)+' m/px';
+   } drawCurrent();
+ } else if(mode==='marker'){
+   const img=ctx.getImageData(Math.max(0,Math.round(p.x)-2),Math.max(0,Math.round(p.y)-2),5,5).data;
+   let r=0,g=0,b=0,n=0; for(let i=0;i<img.length;i+=4){r+=img[i];g+=img[i+1];b+=img[i+2];n++}
+   marker={x:p.x,y:p.y,r:r/n,g:g/n,b:b/n}; mode=null;
+   $('markerText').textContent=`Marker selected · RGB ${marker.r.toFixed(0)}, ${marker.g.toFixed(0)}, ${marker.b.toFixed(0)}`;
+   $('analyzeBtn').disabled=false; drawCurrent();
+ }
+});
+
+function trackColor(prev){
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ const rad=parseInt($('radius').value), tol=parseInt($('tol').value);
+ const x0=Math.max(0,Math.floor(prev.x-rad)), y0=Math.max(0,Math.floor(prev.y-rad));
+ const x1=Math.min(canvas.width,Math.ceil(prev.x+rad)), y1=Math.min(canvas.height,Math.ceil(prev.y+rad));
+ const w=x1-x0,h=y1-y0,img=ctx.getImageData(x0,y0,w,h).data;
+ let sx=0,sy=0,count=0,score=0;
+ for(let y=0;y<h;y+=2) for(let x=0;x<w;x+=2){
+   const i=(y*w+x)*4, dr=img[i]-marker.r,dg=img[i+1]-marker.g,db=img[i+2]-marker.b;
+   const dist=Math.sqrt(dr*dr+dg*dg+db*db);
+   if(dist<tol){let wt=1-dist/tol;sx+=(x+x0)*wt;sy+=(y+y0)*wt;score+=wt;count++}
+ }
+ if(score<4)return {ok:false,x:prev.x,y:prev.y,conf:0};
+ const x=sx/score,y=sy/score;
+ ctx.strokeStyle='yellow';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.stroke();
+ return {ok:true,x,y,conf:Math.min(1,score/100)};
+}
+function smooth(arr,win=5){
+ return arr.map((v,i)=>{
+  let a=Math.max(0,i-win),b=Math.min(arr.length-1,i+win),s=0,n=0;
+  for(let j=a;j<=b;j++){if(Number.isFinite(arr[j])){s+=arr[j];n++}}
+  return n?s/n:NaN;
+ });
+}
+function calculate(){
+ if(samples.length<3)return;
+ let xs=samples.map(s=>s.x), ys=samples.map(s=>s.y), ts=samples.map(s=>s.t);
+ xs=smooth(xs,2);ys=smooth(ys,2);
+ let vv=[],v2=[];
+ for(let i=1;i<samples.length;i++){
+   let dt=ts[i]-ts[i-1]; if(dt<=0||dt>.2){vv.push(NaN);v2.push(NaN);continue}
+   let dx=(xs[i]-xs[i-1])*scaleMPerPx;
+   let dy=-(ys[i]-ys[i-1])*scaleMPerPx;
+   vv.push(dy/dt);v2.push(Math.hypot(dx,dy)/dt);
+ }
+ vv=smooth(vv,3); v2=smooth(v2,3);
+ const good=vv.filter(v=>Number.isFinite(v));
+ const good2=v2.filter(v=>Number.isFinite(v));
+ $('peakV').textContent=good.length?Math.max(...good).toFixed(2):'—';
+ $('peak2D').textContent=good2.length?Math.max(...good2).toFixed(2):'—';
+ const ym=ys.map(y=>y*scaleMPerPx); $('rom').textContent=(Math.max(...ym)-Math.min(...ym)).toFixed(3);
+ $('duration').textContent=(ts.at(-1)-ts[0]).toFixed(2);
+
+ // Detect positive-velocity bouts as concentric reps.
+ // Threshold intentionally conservative to suppress jitter.
+ const threshold=0.08, minDur=.18, gap=.12;
+ let bouts=[],start=null,lastPos=null;
+ for(let i=0;i<vv.length;i++){
+   const t=ts[i+1]??ts[i];
+   if(vv[i]>threshold){if(start===null)start=i;lastPos=i}
+   else if(start!==null && lastPos!==null && (t-(ts[lastPos+1]??ts[lastPos]))>gap){
+     bouts.push([start,lastPos]);start=null;lastPos=null;
+   }
+ }
+ if(start!==null)bouts.push([start,lastPos]);
+ repResults=[];
+ for(const [a,b] of bouts){
+   const t0=ts[a],t1=ts[Math.min(samples.length-1,b+1)],dur=t1-t0;
+   if(dur<minDur)continue;
+   const vals=vv.slice(a,b+1).filter(v=>Number.isFinite(v)&&v>0);
+   if(!vals.length)continue;
+   const yseg=ys.slice(a,b+2);
+   const rom=(Math.max(...yseg)-Math.min(...yseg))*scaleMPerPx;
+   if(rom<.06)continue;
+   repResults.push({rep:repResults.length+1,mean:vals.reduce((a,c)=>a+c,0)/vals.length,peak:Math.max(...vals),rom,dur});
+ }
+ renderReps();
+}
+function renderReps(){
+ const tb=$('repRows');tb.innerHTML='';
+ if(!repResults.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#888">No clear concentric reps detected</td></tr>';$('csvBtn').disabled=true;return}
+ for(const r of repResults){
+   const tr=document.createElement('tr');
+   tr.innerHTML=`<td>${r.rep}</td><td>${r.mean.toFixed(2)}</td><td>${r.peak.toFixed(2)}</td><td>${r.rom.toFixed(3)}</td><td>${r.dur.toFixed(2)}</td>`;tb.appendChild(tr)
+ }
+ $('csvBtn').disabled=false;
+}
+
+function onFrame(now,meta){
+ if(!tracking)return;
+ const t=meta?.mediaTime ?? video.currentTime;
+ const prev=samples.length?samples.at(-1):{x:marker.x,y:marker.y};
+ const tr=trackColor(prev);
+ if(tr.ok){
+   samples.push({t,x:tr.x,y:tr.y,conf:tr.conf});
+   $('samples').textContent=samples.length;
+   $('confidence').textContent=Math.round(100*samples.slice(-20).reduce((a,s)=>a+s.conf,0)/Math.max(1,Math.min(20,samples.length)))+'%';
+ }
+ if(video.ended){stopAnalyze();return}
+ if('requestVideoFrameCallback' in HTMLVideoElement.prototype) rafHandle=video.requestVideoFrameCallback(onFrame);
+ else rafHandle=requestAnimationFrame(()=>onFrame(performance.now(),{mediaTime:video.currentTime}));
+}
+$('analyzeBtn').onclick=async()=>{
+ if(!scaleMPerPx||!marker)return;
+ samples=[];repResults=[];renderReps();tracking=true;
+ $('analyzeBtn').disabled=true;$('stopBtn').disabled=false;$('status').className='ok';$('status').textContent='Analyzing… keep this page open.';
+ await video.play();
+ if('requestVideoFrameCallback' in HTMLVideoElement.prototype) rafHandle=video.requestVideoFrameCallback(onFrame);
+ else rafHandle=requestAnimationFrame(()=>onFrame(performance.now(),{mediaTime:video.currentTime}));
+};
+function stopAnalyze(){
+ tracking=false;video.pause();$('analyzeBtn').disabled=false;$('stopBtn').disabled=true;
+ try{if(video.cancelVideoFrameCallback && rafHandle)video.cancelVideoFrameCallback(rafHandle);else cancelAnimationFrame(rafHandle)}catch(e){}
+ calculate();$('status').className='ok';$('status').textContent=`Finished. ${samples.length} tracked frames; ${repResults.length} concentric rep(s) detected.`;
+}
+$('stopBtn').onclick=stopAnalyze;
+$('resetBtn').onclick=()=>location.reload();
+
+$('csvBtn').onclick=()=>{
+ const rows=[['rep','mean_vertical_velocity_m_s','peak_vertical_velocity_m_s','rom_m','concentric_time_s'],
+ ...repResults.map(r=>[r.rep,r.mean.toFixed(4),r.peak.toFixed(4),r.rom.toFixed(4),r.dur.toFixed(4)])];
+ const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='barspeed_reps.csv';a.click();
+};
+</script>
+</body></html>
